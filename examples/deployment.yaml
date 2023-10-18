@@ -1,0 +1,22 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: temporary-namespaces
+  namespace: kube-system
+spec:
+  selector:
+    matchLabels:
+      app: temporary-namespaces
+  template:
+    metadata:
+      labels:
+        app: temporary-namespaces
+    spec:
+      containers:
+        - name: temporary-namespaces
+          image: rossigee/temporary-namespaces:latest
+          env:
+            - name: KUBE_ANNOTATION_KEY
+              value: "golder.tech/deployment-expirytimestamp"
+      serviceAccountName: temporary-namespaces-sa
