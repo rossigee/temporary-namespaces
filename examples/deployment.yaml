@@ -19,4 +19,6 @@ spec:
           env:
             - name: KUBE_ANNOTATION_KEY
               value: "golder.tech/deployment-expirytimestamp"
+            - name: NAMESPACES_REGEX
+              value: '^\w+-.*-\d+$'
       serviceAccountName: temporary-namespaces-sa
