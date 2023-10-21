@@ -18,8 +18,8 @@ jobs:
 
     - name: Build and push Docker image (amd64)
       env:
-        DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
-        DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
+        DOCKER_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+        DOCKER_PASSWORD: ${{ secrets.DOCKERHUB_TOKEN }}
       run: |
         docker build -t rossigee/temporary-deployments:amd64 -f Dockerfile .
         echo $DOCKER_PASSWORD | docker login -u $DOCKER_USERNAME --password-stdin
@@ -27,8 +27,8 @@ jobs:
 
     - name: Build and push Docker image (arm64)
       env:
-        DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
-        DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
+        DOCKER_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+        DOCKER_PASSWORD: ${{ secrets.DOCKERHUB_TOKEN }}
       run: |
         docker build -t rossigee/temporary-deployments:arm64 -f Dockerfile-arm64 .
         echo $DOCKER_PASSWORD | docker login -u $DOCKER_USERNAME --password-stdin
