@@ -75,7 +75,6 @@ jobs:
         uses: docker/bake-action@v4
         with:
           files: |
-            .github/workflows/docker-bake.hcl
             /tmp/bake-meta.json
           targets: image
           set: |
