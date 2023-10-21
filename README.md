@@ -1,5 +1,7 @@
 # Temporary namespaces
 
+[![CI/CD](https://github.com/rossigee/temporary-namespaces/actions/workflows/build-and-publish.yaml/badge.svg)](https://github.com/rossigee/temporary-namespaces/actions/workflows/build-and-publish.yaml)
+
 This microservice is designed to run with a role that allows it to query the annotations on all namespace, and delete any that have a specific 'expiry' timestamp annotation that has since expired.
 
 This allows us to spin up 'temporary namespaces' from our CI/CD build system, run a series of automated tests against them and announce them to the testing team who can perform any manual tests as required.
