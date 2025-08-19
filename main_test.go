@@ -73,7 +73,9 @@ func TestAvoidDeletingSystemAndNonMatchingNamespaces(t *testing.T) {
 	}
 
 	// Set regex to match only "test-namespace"
-	os.Setenv("NAMESPACES_REGEX", "test-.*")
+	if err := os.Setenv("NAMESPACES_REGEX", "test-.*"); err != nil {
+		t.Fatalf("Error setting environment variable: %v", err)
+	}
 
 	if err := cleanupNamespaces(clientset); err != nil {
 		t.Fatalf("Error cleaning up namespaces: %v", err)

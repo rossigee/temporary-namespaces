@@ -93,7 +93,9 @@ func startMetricsServer() {
 	http.Handle("/metrics", promhttp.Handler())
 	http.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("OK"))
+		if _, err := w.Write([]byte("OK")); err != nil {
+			log.Errorf("Failed to write health response: %v", err)
+		}
 	})
 	
 	log.Infof("Starting metrics server on :8080")
