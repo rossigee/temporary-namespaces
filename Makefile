@@ -1,5 +1,5 @@
-BINARY_NAME := temporary-deployments
-BINARY_NAME_ARM64 := temporary-deployments-arm64
+BINARY_NAME := temporary-namespaces
+BINARY_NAME_ARM64 := temporary-namespaces-arm64
 
 build:
 	@echo "Building binary for amd64..."

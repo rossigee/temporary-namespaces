@@ -4,6 +4,10 @@
 
 This microservice is designed to run with a role that allows it to query the annotations on all namespace, and delete any that have a specific 'expiry' timestamp annotation that has since expired.
 
+## Requirements
+
+- Go 1.25 or later
+
 This allows us to spin up 'temporary namespaces' from our CI/CD build system, run a series of automated tests against them and announce them to the testing team who can perform any manual tests as required.
 
 ## Configuration
