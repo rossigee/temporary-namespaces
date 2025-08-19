@@ -1,4 +1,4 @@
-name: Build container images
+name: Build and Test
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -8,11 +8,33 @@ on:
   push:
     branches:
       - master
+  pull_request:
+    branches:
+      - master
 
 env:
-  REGISTRY_IMAGE: rossigee/temporary-namespaces
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
 
 jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      -
+        name: Checkout
+        uses: actions/checkout@v4
+      -
+        name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.25'
+      -
+        name: Run tests
+        run: make test
+      -
+        name: Run linter
+        run: make lint
+
   prepare:
     runs-on: ubuntu-latest
     outputs:
@@ -34,6 +56,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     needs:
+      - test
       - prepare
     strategy:
       fail-fast: false
@@ -53,16 +76,22 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.REGISTRY_IMAGE }}
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=sha,prefix={{branch}}-
           labels: |
-            org.golder.image.builder=docker-buildx
+            org.opencontainers.image.title=${{ github.event.repository.name }}
+            org.opencontainers.image.description=${{ github.event.repository.description }}
+            org.opencontainers.image.source=${{ github.event.repository.clone_url }}
       -
         name: Rename meta bake definition file
         run: |
           mv "${{ steps.meta.outputs.bake-file }}" "/tmp/bake-meta.json"
       -
         name: Upload meta bake definition
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: bake-meta
           path: /tmp/bake-meta.json
@@ -77,12 +106,13 @@ jobs:
         with:
           buildkitd-flags: "--debug"
       -
-        name: Login to Docker Hub
+        name: Log in to Container Registry
         if: github.event_name != 'pull_request'
         uses: docker/login-action@v3
         with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.PAT_TOKEN }}
       -
         name: Build
         id: bake
@@ -97,7 +127,7 @@ jobs:
             *.platform=${{ matrix.platform }}
             *.cache-from=type=gha,scope=build-${{ env.PLATFORM_PAIR }}
             *.cache-to=type=gha,scope=build-${{ env.PLATFORM_PAIR }}
-            *.output=type=image,"name=${{ env.REGISTRY_IMAGE }}",push-by-digest=true,name-canonical=true,push=${{ github.event_name != 'pull_request' }}
+            *.output=type=image,"name=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}",push-by-digest=true,name-canonical=true,push=${{ github.event_name != 'pull_request' }}
       -
         name: Export digest
         run: |
@@ -106,9 +136,9 @@ jobs:
           touch "/tmp/digests/${digest#sha256:}"
       -
         name: Upload digest
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
-          name: digests
+          name: digests-${{ env.PLATFORM_PAIR }}
           path: /tmp/digests/*
           if-no-files-found: error
           retention-days: 1
@@ -116,36 +146,39 @@ jobs:
   merge:
     runs-on: ubuntu-latest
     needs:
+      - test
       - build
     steps:
       -
         name: Download meta bake definition
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: bake-meta
           path: /tmp
       -
         name: Download digests
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
-          name: digests
           path: /tmp/digests
+          pattern: digests-*
+          merge-multiple: true
       -
         name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
       -
-        name: Login to DockerHub
+        name: Log in to Container Registry
         uses: docker/login-action@v3
         with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.PAT_TOKEN }}
       -
         name: Create manifest list and push
         working-directory: /tmp/digests
         run: |
-          docker buildx imagetools create $(jq -cr '.target."docker-metadata-action".tags | map(select(startswith("${{ env.REGISTRY_IMAGE }}")) | "-t " + .) | join(" ")' /tmp/bake-meta.json) \
-            $(printf '${{ env.REGISTRY_IMAGE }}@sha256:%s ' *)
+          docker buildx imagetools create $(jq -cr '.target."docker-metadata-action".tags | map(select(startswith("${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}")) | "-t " + .) | join(" ")' /tmp/bake-meta.json) \
+            $(printf '${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@sha256:%s ' *)
       -
         name: Inspect image
         run: |
-          docker buildx imagetools inspect ${{ env.REGISTRY_IMAGE }}:$(jq -r '.target."docker-metadata-action".args.DOCKER_META_VERSION' /tmp/bake-meta.json)
+          docker buildx imagetools inspect ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:$(jq -r '.target."docker-metadata-action".args.DOCKER_META_VERSION' /tmp/bake-meta.json)
